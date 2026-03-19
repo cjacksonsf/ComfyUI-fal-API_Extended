@@ -166,7 +166,7 @@ If you encounter any errors during installation or usage, try the following:
 1. Ensure you have the latest version of ComfyUI installed
 2. Update this custom node package:
    ```
-   cd custom_nodes/ComfyUI-fal-API
+   cd custom_nodes/ComfyUI-fal-API_Extended
    git pull
    pip install -r requirements.txt
    ```
