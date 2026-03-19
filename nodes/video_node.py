@@ -895,6 +895,292 @@ class Wan2214bAnimateMoveNode:
 
 
 
+class Wan2214bVACEFunPoseNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+            },
+            "optional": {
+                "video": ("VIDEO", {"default": None}),
+                "input_video_url": ("STRING", {"default": ""}),
+                "first_frame_image": ("IMAGE", {"default": None}),
+                "last_frame_image": ("IMAGE", {"default": None}),
+                "ref_images": ("IMAGE", {"default": None, "multiple": True}),
+                "num_frames": ("INT", {"default": 81, "min": 17, "max": 241}),
+                "frames_per_second": ("INT", {"default": 16, "min": 5, "max": 30}),
+                "resolution": (["auto", "240p", "360p", "480p", "580p", "720p"], {"default": "auto"}),
+                "aspect_ratio": (["auto", "16:9", "1:1", "9:16"], {"default": "auto"}),
+                "num_inference_steps": ("INT", {"default": 30, "min": 2, "max": 50}),
+                "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 10.0, "step": 0.5}),
+                "sampler": (["unipc", "dpm++", "euler"], {"default": "unipc"}),
+                "shift": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 15.0, "step": 0.5}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+                "video_quality": (["low", "medium", "high", "maximum"], {"default": "high"}),
+                "video_write_mode": (["fast", "balanced", "small"], {"default": "balanced"}),
+                "acceleration": (["none", "regular"], {"default": "regular"}),
+                "enable_safety_checker": ("BOOLEAN", {"default": False}),
+                "enable_prompt_expansion": ("BOOLEAN", {"default": False}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("video_url",)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(
+        self,
+        prompt,
+        video=None,
+        input_video_url="",
+        first_frame_image=None,
+        last_frame_image=None,
+        ref_images=None,
+        num_frames=81,
+        frames_per_second=16,
+        resolution="auto",
+        aspect_ratio="auto",
+        num_inference_steps=30,
+        guidance_scale=5.0,
+        sampler="unipc",
+        shift=5.0,
+        seed=-1,
+        video_quality="high",
+        video_write_mode="balanced",
+        acceleration="regular",
+        enable_safety_checker=False,
+        enable_prompt_expansion=False,
+    ):
+        try:
+            if video is None and input_video_url == "":
+                return ApiHandler.handle_video_generation_error(
+                    "wan-22-vace-fun-a14b/pose", "A pose video or video URL is required."
+                )
+            if video is None and input_video_url != "":
+                video_url = input_video_url
+            else:
+                video_url = ImageUtils.upload_file(video.get_stream_source())
+            if not video_url:
+                return ApiHandler.handle_video_generation_error(
+                    "wan-22-vace-fun-a14b/pose", "Failed to upload video"
+                )
+
+            arguments = {
+                "prompt": prompt,
+                "video_url": video_url,
+                "num_frames": num_frames,
+                "frames_per_second": frames_per_second,
+                "resolution": resolution,
+                "aspect_ratio": aspect_ratio,
+                "num_inference_steps": num_inference_steps,
+                "guidance_scale": guidance_scale,
+                "sampler": sampler,
+                "shift": shift,
+                "video_quality": video_quality,
+                "video_write_mode": video_write_mode,
+                "acceleration": acceleration,
+                "enable_safety_checker": enable_safety_checker,
+                "enable_prompt_expansion": enable_prompt_expansion,
+            }
+
+            if seed != -1:
+                arguments["seed"] = seed
+
+            if first_frame_image is not None:
+                first_frame_url = ImageUtils.upload_image(first_frame_image)
+                if first_frame_url:
+                    arguments["first_frame_url"] = first_frame_url
+
+            if last_frame_image is not None:
+                last_frame_url = ImageUtils.upload_image(last_frame_image)
+                if last_frame_url:
+                    arguments["last_frame_url"] = last_frame_url
+
+            if ref_images is not None:
+                ref_image_urls = []
+                if isinstance(ref_images, torch.Tensor):
+                    if ref_images.ndim == 4 and ref_images.shape[0] > 1:
+                        for i in range(ref_images.shape[0]):
+                            url = ImageUtils.upload_image(ref_images[i:i+1])
+                            if url:
+                                ref_image_urls.append(url)
+                    else:
+                        url = ImageUtils.upload_image(ref_images)
+                        if url:
+                            ref_image_urls.append(url)
+                elif isinstance(ref_images, (list, tuple)):
+                    for img in ref_images:
+                        url = ImageUtils.upload_image(img)
+                        if url:
+                            ref_image_urls.append(url)
+                if ref_image_urls:
+                    arguments["ref_image_urls"] = ref_image_urls
+
+            result = ApiHandler.submit_and_get_result(
+                "fal-ai/wan-22-vace-fun-a14b/pose",
+                arguments,
+            )
+
+            return (result["video"]["url"],)
+
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error("wan-22-vace-fun-a14b/pose", str(e))
+
+
+class Wan2214bVACEFunInpaintingNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+            },
+            "optional": {
+                "video": ("VIDEO", {"default": None}),
+                "input_video_url": ("STRING", {"default": ""}),
+                "mask_video": ("VIDEO", {"default": None}),
+                "mask_video_url": ("STRING", {"default": ""}),
+                "mask_image": ("IMAGE", {"default": None}),
+                "first_frame_image": ("IMAGE", {"default": None}),
+                "last_frame_image": ("IMAGE", {"default": None}),
+                "ref_images": ("IMAGE", {"default": None, "multiple": True}),
+                "num_frames": ("INT", {"default": 81, "min": 17, "max": 241}),
+                "frames_per_second": ("INT", {"default": 16, "min": 5, "max": 30}),
+                "resolution": (["auto", "240p", "360p", "480p", "580p", "720p"], {"default": "auto"}),
+                "aspect_ratio": (["auto", "16:9", "1:1", "9:16"], {"default": "auto"}),
+                "num_inference_steps": ("INT", {"default": 30, "min": 2, "max": 50}),
+                "guidance_scale": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 10.0, "step": 0.5}),
+                "sampler": (["unipc", "dpm++", "euler"], {"default": "unipc"}),
+                "shift": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 15.0, "step": 0.5}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+                "video_quality": (["low", "medium", "high", "maximum"], {"default": "high"}),
+                "video_write_mode": (["fast", "balanced", "small"], {"default": "balanced"}),
+                "acceleration": (["none", "regular"], {"default": "regular"}),
+                "enable_safety_checker": ("BOOLEAN", {"default": False}),
+                "enable_prompt_expansion": ("BOOLEAN", {"default": False}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("video_url",)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(
+        self,
+        prompt,
+        video=None,
+        input_video_url="",
+        mask_video=None,
+        mask_video_url="",
+        mask_image=None,
+        first_frame_image=None,
+        last_frame_image=None,
+        ref_images=None,
+        num_frames=81,
+        frames_per_second=16,
+        resolution="auto",
+        aspect_ratio="auto",
+        num_inference_steps=30,
+        guidance_scale=5.0,
+        sampler="unipc",
+        shift=5.0,
+        seed=-1,
+        video_quality="high",
+        video_write_mode="balanced",
+        acceleration="regular",
+        enable_safety_checker=False,
+        enable_prompt_expansion=False,
+    ):
+        try:
+            if video is None and input_video_url == "":
+                return ApiHandler.handle_video_generation_error(
+                    "wan-22-vace-fun-a14b/inpainting", "A source video or video URL is required."
+                )
+            if video is None and input_video_url != "":
+                video_url = input_video_url
+            else:
+                video_url = ImageUtils.upload_file(video.get_stream_source())
+            if not video_url:
+                return ApiHandler.handle_video_generation_error(
+                    "wan-22-vace-fun-a14b/inpainting", "Failed to upload video"
+                )
+
+            arguments = {
+                "prompt": prompt,
+                "video_url": video_url,
+                "num_frames": num_frames,
+                "frames_per_second": frames_per_second,
+                "resolution": resolution,
+                "aspect_ratio": aspect_ratio,
+                "num_inference_steps": num_inference_steps,
+                "guidance_scale": guidance_scale,
+                "sampler": sampler,
+                "shift": shift,
+                "video_quality": video_quality,
+                "video_write_mode": video_write_mode,
+                "acceleration": acceleration,
+                "enable_safety_checker": enable_safety_checker,
+                "enable_prompt_expansion": enable_prompt_expansion,
+            }
+
+            if seed != -1:
+                arguments["seed"] = seed
+
+            if mask_video is not None:
+                uploaded_mask_url = ImageUtils.upload_file(mask_video.get_stream_source())
+                if uploaded_mask_url:
+                    arguments["mask_video_url"] = uploaded_mask_url
+            elif mask_video_url != "":
+                arguments["mask_video_url"] = mask_video_url
+
+            if mask_image is not None:
+                uploaded_mask_image_url = ImageUtils.upload_image(mask_image)
+                if uploaded_mask_image_url:
+                    arguments["mask_image_url"] = uploaded_mask_image_url
+
+            if first_frame_image is not None:
+                first_frame_url = ImageUtils.upload_image(first_frame_image)
+                if first_frame_url:
+                    arguments["first_frame_url"] = first_frame_url
+
+            if last_frame_image is not None:
+                last_frame_url = ImageUtils.upload_image(last_frame_image)
+                if last_frame_url:
+                    arguments["last_frame_url"] = last_frame_url
+
+            if ref_images is not None:
+                ref_image_urls = []
+                if isinstance(ref_images, torch.Tensor):
+                    if ref_images.ndim == 4 and ref_images.shape[0] > 1:
+                        for i in range(ref_images.shape[0]):
+                            url = ImageUtils.upload_image(ref_images[i:i+1])
+                            if url:
+                                ref_image_urls.append(url)
+                    else:
+                        url = ImageUtils.upload_image(ref_images)
+                        if url:
+                            ref_image_urls.append(url)
+                elif isinstance(ref_images, (list, tuple)):
+                    for img in ref_images:
+                        url = ImageUtils.upload_image(img)
+                        if url:
+                            ref_image_urls.append(url)
+                if ref_image_urls:
+                    arguments["ref_image_urls"] = ref_image_urls
+
+            result = ApiHandler.submit_and_get_result(
+                "fal-ai/wan-22-vace-fun-a14b/inpainting",
+                arguments,
+            )
+
+            return (result["video"]["url"],)
+
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error("wan-22-vace-fun-a14b/inpainting", str(e))
+
+
 class KreaWan14bVideoToVideoNode:
     @classmethod
     def INPUT_TYPES(cls):
@@ -1655,7 +1941,9 @@ class LTX2ImageToVideoNode:
                 "fps": ("INT", {"default": 25, "min": 1, "max": 2147483647})
             },
             "optional": {
-                
+                "custom_size_X": ("INT", {"default": 1024, "min": 1, "max": 2147483647}),
+                "custom_size_Y": ("INT", {"default": 1024, "min": 1, "max": 2147483647}),
+                "camera_lora": (["none", "dolly_in", "dolly_out", "dolly_left", "dolly_right", "jib_up", "jib_down", "static"], {"default": "none"})
             },
         }
 
@@ -1663,7 +1951,7 @@ class LTX2ImageToVideoNode:
     FUNCTION = "generate_video"
     CATEGORY = "FAL/VideoGeneration"
 
-    def generate_video(self, prompt, image, num_frames, video_size, fps):
+    def generate_video(self, prompt, image, custom_size_X: None, custom_size_Y: None, num_frames, video_size, fps, camera_lora):
         try:
             image_url = ImageUtils.upload_image(image)
             if not image_url:
@@ -1681,7 +1969,7 @@ class LTX2ImageToVideoNode:
                 "use_multiscale": True,
                 "fps": fps,
                 "acceleration": "none",
-                "camera_lora": "none",
+                "camera_lora": camera_lora,
                 "camera_lora_scale": 1,
                 "negative_prompt": "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, off-sync audio,incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts.",
                 "enable_prompt_expansion": True,
@@ -1693,6 +1981,12 @@ class LTX2ImageToVideoNode:
                 "image_strength": 1,
                 "end_image_strength": 1
                 }
+
+            if video_size == "custom":
+                arguments["video_size"] = {
+                    "width": custom_size_X, 
+                    "height": custom_size_Y
+                }           
 
             result = ApiHandler.submit_and_get_result(
                 "fal-ai/ltx-2-19b/distilled/image-to-video", arguments
@@ -1725,7 +2019,7 @@ class LTX2ExtendNode:
     FUNCTION = "generate_video"
     CATEGORY = "FAL/VideoGeneration"
 
-    def generate_video(self, prompt, video = None, num_frames = 121, video_size = "auto", fps = 25, end_image = None, num_context_frames = 25):
+    def generate_video(self, prompt, video = None, num_frames = 121, video_size = "auto", fps = 25, end_image = None, num_context_frames = 25):   
         try:
             video_url = ImageUtils.upload_file(video.get_stream_source())
             if not video_url:
@@ -1733,6 +2027,9 @@ class LTX2ExtendNode:
                     "fal-ai/ltx-2-19b/distilled/extend-video",
                     "Failed to upload video",
                 )
+
+            if end_image is not None:
+                end_image_url = ImageUtils.upload_image(end_image)
 
             arguments = {
                 "prompt": prompt,
@@ -1756,13 +2053,15 @@ class LTX2ExtendNode:
                 "video_strength": 1,
                 "audio_strength": 1,
                 "end_image_strength": 1
-                }
+            }
 
-            if end_image is not None:
-                arguments = {"end_image_url": {
-                    end_image
-                    }
-                }
+            
+            if end_image_url:
+                arguments["end_image_url"] = end_image_url
+            else:
+                return ApiHandler.handle_video_generation_error(
+                    "fal-ai/ltx-2-19b/distilled/extend-video", "Failed to upload end image"
+                )
 
             result = ApiHandler.submit_and_get_result(
                 "fal-ai/ltx-2-19b/distilled/extend-video", arguments
@@ -1773,6 +2072,71 @@ class LTX2ExtendNode:
             return ApiHandler.handle_video_generation_error(
                 "fal-ai/ltx-2-19b/distilled/extend-video", str(e)
             )
+
+class SeedancePro15ImageToVideoNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "image": ("IMAGE",),
+                "resolution": (["480p", "720p", "1080p"], {"default": "720p"}),
+                "duration": (["4","5","6","7","8","9","10","11","12"], {"default": "5"}),
+                "camera_fixed": ("BOOLEAN", {"default": False}),
+                "aspect_ratio": (["16:9", "21:9", "4:3", "1:1", "3:4", "9:16"], {"default": "16:9"}),
+            },
+            "optional": {
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+                "end_image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(self, prompt, image, resolution, aspect_ratio, duration, camera_fixed, seed=-1, end_image=None):
+        try:
+            image_url = ImageUtils.upload_image(image)
+            if not image_url:
+                return ApiHandler.handle_video_generation_error(
+                    "fal-ai/bytedance/seedance/v1.5/pro/image-to-video",
+                    "Failed to upload image",
+                )
+            if end_image is not None:
+                end_image_url = ImageUtils.upload_image(end_image)
+                
+            arguments = {
+                "prompt": prompt,
+                "image_url": image_url,
+                "resolution": resolution,
+                "duration": duration,
+                "camera_fixed": camera_fixed,
+                "aspect_ratio": aspect_ratio,
+            }
+
+            # Only add seed if it's not -1 (random)
+            if seed != -1:
+                arguments["seed"] = seed
+
+            if end_image_url:
+                arguments["end_image_url"] = end_image_url
+            else:
+                return ApiHandler.handle_video_generation_error(
+                    "fal-ai/ltx-2-19b/distilled/extend-video", "Failed to upload end image"
+                )
+
+            result = ApiHandler.submit_and_get_result(
+                "fal-ai/bytedance/seedance/v1.5/pro/image-to-video", arguments
+            )
+            video_url = result["video"]["url"]
+            return (video_url,)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "fal-ai/bytedance/seedance/v1.5/pro/image-to-video", str(e)
+            )
+        
+
 
 
 # Update Node class mappings
@@ -1798,11 +2162,14 @@ NODE_CLASS_MAPPINGS = {
     "WanVACEVideoEdit_fal": WanVACEVideoEditNode,
     "Wan2214b_animate_replace_character_fal": Wan2214bAnimateReplaceNode,
     "Wan2214b_animate_move_character_fal": Wan2214bAnimateMoveNode,
+    "Wan2214b_VACE_Fun_Pose_fal": Wan2214bVACEFunPoseNode,
+    "Wan2214b_VACE_Fun_Inpainting_fal": Wan2214bVACEFunInpaintingNode,
     "SeedanceImageToVideo_fal": SeedanceImageToVideoNode,
     "SeedanceTextToVideo_fal": SeedanceTextToVideoNode,
     "Veo3_fal": Veo3Node,
     "LTX2_Image_To_Video": LTX2ImageToVideoNode,
-    "LTX2_Extend_Video": LTX2ExtendNode
+    "LTX2_Extend_Video": LTX2ExtendNode,
+    "SeedancePro15ImageToVideo_fal": SeedancePro15ImageToVideoNode,
     
 }
 
@@ -1832,6 +2199,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "WanVACEVideoEdit_fal": "Wan VACE Video Edit (fal)",
     "Wan2214b_animate_replace_character_fal": "Wan 2.2 14b Animate: Replace Character (fal)",
     "Wan2214b_animate_move_character_fal": "Wan 2.2 14b Animate: Move Character (fal)",
+    "Wan2214b_VACE_Fun_Pose_fal": "Wan 2.2 14b VACE Fun: Pose (fal)",
+    "Wan2214b_VACE_Fun_Inpainting_fal": "Wan 2.2 14b VACE Fun: Inpainting (fal)",
     "LTX2_Image_To_Video": "LTX2 Image To Video (fal)",
-    "LTX2_Extend_Video": "LTX2 Extend Video (fal)"
+    "LTX2_Extend_Video": "LTX2 Extend Video (fal)",
+    "SeedancePro15ImageToVideo_fal": "Seedance Pro 1.5 Image To Video (fal)",
 }
