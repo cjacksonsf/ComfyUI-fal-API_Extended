@@ -4103,6 +4103,92 @@ class SeedancePro15ImageToVideoNode:
             )
 
 
+class WanMoveNode:
+    """
+    Wan Move [480p] - Animate objects in an image along defined trajectories.
+    Endpoint: fal-ai/wan-move
+    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "trajectories": (
+                    "STRING",
+                    {
+                        "default": '[[{"x": 100, "y": 200, "speed": 1.0}, {"x": 300, "y": 400, "speed": 1.0}]]',
+                        "multiline": True,
+                        "tooltip": (
+                            "JSON array of trajectories. Each trajectory is a list of points "
+                            "with 'x' (int), 'y' (int), and optional 'speed' (float, -5 to 5, default 1). "
+                            "Example (one object, two waypoints): "
+                            '[[{"x": 100, "y": 200, "speed": 1.0}, {"x": 300, "y": 400}]]'
+                        ),
+                    },
+                ),
+            },
+            "optional": {
+                "negative_prompt": ("STRING", {"default": "", "multiline": True}),
+                "num_inference_steps": ("INT", {"default": 40, "min": 1, "max": 100, "step": 1}),
+                "guidance_scale": ("FLOAT", {"default": 3.5, "min": 0.1, "max": 20.0, "step": 0.1}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("video_url",)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(
+        self,
+        image,
+        prompt,
+        trajectories,
+        negative_prompt="",
+        num_inference_steps=40,
+        guidance_scale=3.5,
+        seed=-1,
+    ):
+        import json
+
+        try:
+            image_url = ImageUtils.upload_image(image)
+            if not image_url:
+                return ApiHandler.handle_video_generation_error(
+                    "wan-move", "Failed to upload image"
+                )
+
+            try:
+                trajectories_list = json.loads(trajectories)
+            except json.JSONDecodeError as e:
+                return ApiHandler.handle_video_generation_error(
+                    "wan-move", f"Invalid trajectories JSON: {str(e)}"
+                )
+
+            arguments = {
+                "image_url": image_url,
+                "prompt": prompt,
+                "trajectories": trajectories_list,
+                "num_inference_steps": num_inference_steps,
+                "guidance_scale": guidance_scale,
+            }
+
+            if negative_prompt:
+                arguments["negative_prompt"] = negative_prompt
+
+            if seed != -1:
+                arguments["seed"] = seed
+
+            result = ApiHandler.submit_and_get_result("fal-ai/wan-move", arguments)
+            video_url = result["video"]["url"]
+            return (video_url,)
+
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error("wan-move", str(e))
+
+
 # Update Node class mappings
 NODE_CLASS_MAPPINGS = {
     "InfinityStarTextToVideo_fal": InfinityStarTextToVideoNode,
@@ -4158,6 +4244,7 @@ NODE_CLASS_MAPPINGS = {
     "LTX2_Image_To_Video": LTX2ImageToVideoNode,
     "LTX2_Extend_Video": LTX2ExtendNode,
     "SeedancePro15ImageToVideo_fal": SeedancePro15ImageToVideoNode,
+    "WanMove_fal": WanMoveNode,
 }
 
 # Update Node display name mappings
@@ -4215,4 +4302,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LTX2_Image_To_Video": "LTX2 Image To Video (fal)",
     "LTX2_Extend_Video": "LTX2 Extend Video (fal)",
     "SeedancePro15ImageToVideo_fal": "Seedance Pro 1.5 Image To Video (fal)",
+    "WanMove_fal": "Wan Move Image-to-Video (fal)",
 }
