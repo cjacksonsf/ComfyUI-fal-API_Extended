@@ -3568,6 +3568,106 @@ class FalKlingO3ProVideo:
             )
 
 
+class FalKlingO3ProVideoToVideoEdit:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "video": ("VIDEO",),
+            },
+            "optional": {
+                "duration": (["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "5"}),
+                "aspect_ratio": (["16:9", "9:16", "1:1"], {"default": "16:9"}),
+                "reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_1_frontal_image": ("IMAGE",),
+                "element_1_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_2_frontal_image": ("IMAGE",),
+                "element_2_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_3_frontal_image": ("IMAGE",),
+                "element_3_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_4_frontal_image": ("IMAGE",),
+                "element_4_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "variations": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("video_url",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "edit_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def edit_video(
+        self,
+        prompt,
+        video,
+        duration="5",
+        aspect_ratio="16:9",
+        reference_images=None,
+        element_1_frontal_image=None,
+        element_1_reference_images=None,
+        element_2_frontal_image=None,
+        element_2_reference_images=None,
+        element_3_frontal_image=None,
+        element_3_reference_images=None,
+        element_4_frontal_image=None,
+        element_4_reference_images=None,
+        variations=1,
+    ):
+        try:
+            video_url = ImageUtils.upload_file(video.get_stream_source())
+            if not video_url:
+                return ApiHandler.handle_video_generation_error(
+                    "kling-video/o3/pro/video-to-video/edit", "Failed to upload video"
+                )
+
+            arguments = {
+                "prompt": prompt,
+                "video_url": video_url,
+                "duration": duration,
+                "aspect_ratio": aspect_ratio,
+            }
+
+            if reference_images is not None:
+                ref_image_urls = ImageUtils.prepare_images(reference_images)
+                if ref_image_urls:
+                    arguments["image_urls"] = ref_image_urls
+
+            elements = []
+            element_pairs = [
+                (element_1_frontal_image, element_1_reference_images),
+                (element_2_frontal_image, element_2_reference_images),
+                (element_3_frontal_image, element_3_reference_images),
+                (element_4_frontal_image, element_4_reference_images),
+            ]
+            for frontal_img, ref_imgs in element_pairs:
+                if frontal_img is not None:
+                    element = {}
+                    frontal_url = ImageUtils.upload_image(frontal_img)
+                    if frontal_url:
+                        element["frontal_image_url"] = frontal_url
+
+                    if ref_imgs is not None:
+                        ref_urls = ImageUtils.prepare_images(ref_imgs)
+                        if ref_urls:
+                            element["reference_image_urls"] = ref_urls
+
+                    elements.append(element)
+
+            if elements:
+                arguments["elements"] = elements
+
+            results = ApiHandler.submit_multiple_and_get_results(
+                "fal-ai/kling-video/o3/pro/video-to-video/edit", arguments, variations
+            )
+            return ([r["video"]["url"] for r in results],)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "kling-video/o3/pro/video-to-video/edit", str(e)
+            )
+
+
 class FalWan26Video:
     @classmethod
     def INPUT_TYPES(cls):
@@ -4236,6 +4336,7 @@ NODE_CLASS_MAPPINGS = {
     "KlingV3ProMotionControl_fal": FalKlingV3ProMotionControl,
     "KlingO3Standard_fal": FalKlingO3StandardVideo,
     "KlingO3Pro_fal": FalKlingO3ProVideo,
+    "KlingO3ProVideoToVideoEdit_fal": FalKlingO3ProVideoToVideoEdit,
     "Wan26_fal": FalWan26Video,
     "Wan26ReferenceToVideo_fal": FalWan26ReferenceToVideo,
     "Sora2Pro_fal": FalSora2ProImageToVideo,
@@ -4294,6 +4395,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "KlingV3ProMotionControl_fal": "Kling V3 Pro Motion Control (fal)",
     "KlingO3Standard_fal": "Kling O3 Standard Video Generation (fal)",
     "KlingO3Pro_fal": "Kling O3 Pro Video Generation (fal)",
+    "KlingO3ProVideoToVideoEdit_fal": "Kling O3 Pro Video-to-Video Edit (fal)",
     "Wan26_fal": "Wan 2.6 Video Generation (fal)",
     "Wan26ReferenceToVideo_fal": "Wan 2.6 Reference-to-Video (fal)",
     "Sora2Pro_fal": "Sora 2 Pro Image-to-Video (fal)",
