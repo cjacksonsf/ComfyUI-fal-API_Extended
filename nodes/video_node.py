@@ -4541,18 +4541,14 @@ class KlingV34KImageToVideoNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "prompt": ("STRING", {"default": "", "multiline": True}),
                 "image": ("IMAGE",),
                 "duration": (["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "5"}),
             },
             "optional": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "multi_prompt": ("STRING", {"default": "", "multiline": True,
+                    "tooltip": 'JSON array of per-shot prompts. Example: [{"prompt": "A cat walks", "duration": "5"}, {"prompt": "It jumps", "duration": "5"}]'}),
                 "end_image": ("IMAGE",),
-                "element_1_frontal_image": ("IMAGE",),
-                "element_1_reference_images": ("IMAGE", {"default": None, "multiple": True}),
-                "element_2_frontal_image": ("IMAGE",),
-                "element_2_reference_images": ("IMAGE", {"default": None, "multiple": True}),
-                "element_3_frontal_image": ("IMAGE",),
-                "element_3_reference_images": ("IMAGE", {"default": None, "multiple": True}),
                 "negative_prompt": ("STRING", {"default": "blur, distort, and low quality", "multiline": True}),
                 "cfg_scale": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
                 "generate_audio": ("BOOLEAN", {"default": True}),
@@ -4567,21 +4563,18 @@ class KlingV34KImageToVideoNode:
 
     def generate_video(
         self,
-        prompt,
         image,
         duration,
+        prompt="",
+        multi_prompt="",
         end_image=None,
-        element_1_frontal_image=None,
-        element_1_reference_images=None,
-        element_2_frontal_image=None,
-        element_2_reference_images=None,
-        element_3_frontal_image=None,
-        element_3_reference_images=None,
         negative_prompt="blur, distort, and low quality",
         cfg_scale=0.5,
         generate_audio=True,
         variations=1,
     ):
+        import json
+
         try:
             image_url = ImageUtils.upload_image(image)
             if not image_url:
@@ -4590,7 +4583,6 @@ class KlingV34KImageToVideoNode:
                 )
 
             arguments = {
-                "prompt": prompt,
                 "start_image_url": image_url,
                 "duration": duration,
                 "negative_prompt": negative_prompt,
@@ -4598,32 +4590,26 @@ class KlingV34KImageToVideoNode:
                 "generate_audio": generate_audio,
             }
 
+            # Either prompt or multi_prompt is required
+            if multi_prompt and multi_prompt.strip():
+                try:
+                    arguments["multi_prompt"] = json.loads(multi_prompt)
+                    arguments["shot_type"] = "customize"
+                except json.JSONDecodeError as e:
+                    return ApiHandler.handle_video_generation_error(
+                        "kling-video/v3/4k/image-to-video", f"Invalid multi_prompt JSON: {str(e)}"
+                    )
+            elif prompt and prompt.strip():
+                arguments["prompt"] = prompt
+            else:
+                return ApiHandler.handle_video_generation_error(
+                    "kling-video/v3/4k/image-to-video", "Either prompt or multi_prompt is required"
+                )
+
             if end_image is not None:
                 end_url = ImageUtils.upload_image(end_image)
                 if end_url:
                     arguments["end_image_url"] = end_url
-
-            # Build elements array
-            elements = []
-            element_pairs = [
-                (element_1_frontal_image, element_1_reference_images),
-                (element_2_frontal_image, element_2_reference_images),
-                (element_3_frontal_image, element_3_reference_images),
-            ]
-            for frontal_img, ref_imgs in element_pairs:
-                if frontal_img is not None:
-                    element = {}
-                    frontal_url = ImageUtils.upload_image(frontal_img)
-                    if frontal_url:
-                        element["frontal_image_url"] = frontal_url
-                    if ref_imgs is not None:
-                        ref_urls = ImageUtils.prepare_images(ref_imgs)
-                        if ref_urls:
-                            element["reference_image_urls"] = ref_urls
-                    elements.append(element)
-
-            if elements:
-                arguments["elements"] = elements
 
             results = ApiHandler.submit_multiple_and_get_results(
                 "fal-ai/kling-video/v3/4k/image-to-video", arguments, variations
