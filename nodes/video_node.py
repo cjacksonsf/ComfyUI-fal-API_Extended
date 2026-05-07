@@ -4347,7 +4347,7 @@ class HappyHorseVideoEditNode:
         return {
             "required": {
                 "prompt": ("STRING", {"default": "", "multiline": True}),
-                "video_url": ("STRING", {"default": ""}),
+                "video": ("VIDEO",),
             },
             "optional": {
                 "reference_images": ("IMAGE",),
@@ -4362,8 +4362,14 @@ class HappyHorseVideoEditNode:
     FUNCTION = "edit_video"
     CATEGORY = "FAL/VideoGeneration"
 
-    def edit_video(self, prompt, video_url, reference_images=None, resolution="1080p", audio_setting="auto", seed=-1, enable_safety_checker=True):
+    def edit_video(self, prompt, video, reference_images=None, resolution="1080p", audio_setting="auto", seed=-1, enable_safety_checker=True):
         try:
+            video_url = ImageUtils.upload_file(video.get_stream_source())
+            if not video_url:
+                return ApiHandler.handle_video_generation_error(
+                    "happy-horse/video-edit", "Failed to upload video"
+                )
+
             arguments = {
                 "prompt": prompt,
                 "video_url": video_url,
@@ -4416,6 +4422,9 @@ class KlingO34KReferenceToVideoNode:
                 "element_6_reference_images": ("IMAGE", {"default": None, "multiple": True}),
                 "element_7_frontal_image": ("IMAGE",),
                 "element_7_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_video_1": ("VIDEO",),
+                "element_video_2": ("VIDEO",),
+                "element_video_3": ("VIDEO",),
                 "duration": (["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "5"}),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {"default": "16:9"}),
                 "generate_audio": ("BOOLEAN", {"default": False}),
@@ -4448,6 +4457,9 @@ class KlingO34KReferenceToVideoNode:
         element_6_reference_images=None,
         element_7_frontal_image=None,
         element_7_reference_images=None,
+        element_video_1=None,
+        element_video_2=None,
+        element_video_3=None,
         duration="5",
         aspect_ratio="16:9",
         generate_audio=False,
@@ -4481,6 +4493,8 @@ class KlingO34KReferenceToVideoNode:
 
             # Build elements array
             elements = []
+
+            # Image-based elements (frontal + reference images)
             element_pairs = [
                 (element_1_frontal_image, element_1_reference_images),
                 (element_2_frontal_image, element_2_reference_images),
@@ -4501,6 +4515,13 @@ class KlingO34KReferenceToVideoNode:
                         if ref_urls:
                             element["reference_image_urls"] = ref_urls
                     elements.append(element)
+
+            # Video-based elements
+            for vid in [element_video_1, element_video_2, element_video_3]:
+                if vid is not None:
+                    vid_url = ImageUtils.upload_file(vid.get_stream_source())
+                    if vid_url:
+                        elements.append({"video_url": vid_url})
 
             if elements:
                 arguments["elements"] = elements
@@ -4623,12 +4644,12 @@ class Seedance20ReferenceToVideoNode:
             },
             "optional": {
                 "reference_images": ("IMAGE",),
-                "video1_url": ("STRING", {"default": ""}),
-                "video2_url": ("STRING", {"default": ""}),
-                "video3_url": ("STRING", {"default": ""}),
-                "audio1_url": ("STRING", {"default": ""}),
-                "audio2_url": ("STRING", {"default": ""}),
-                "audio3_url": ("STRING", {"default": ""}),
+                "video_1": ("VIDEO",),
+                "video_2": ("VIDEO",),
+                "video_3": ("VIDEO",),
+                "audio_1": ("AUDIO",),
+                "audio_2": ("AUDIO",),
+                "audio_3": ("AUDIO",),
                 "resolution": (["480p", "720p", "1080p"], {"default": "720p"}),
                 "duration": (["auto", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "auto"}),
                 "aspect_ratio": (["auto", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"], {"default": "auto"}),
@@ -4641,16 +4662,33 @@ class Seedance20ReferenceToVideoNode:
     FUNCTION = "generate_video"
     CATEGORY = "FAL/VideoGeneration"
 
+    @staticmethod
+    def _upload_audio(audio):
+        """Save AUDIO input to a temp WAV file and upload to fal."""
+        import torchaudio
+        try:
+            waveform = audio["waveform"].squeeze(0)
+            sample_rate = audio["sample_rate"]
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                torchaudio.save(f.name, waveform, sample_rate)
+                temp_path = f.name
+            url = ImageUtils.upload_file(temp_path)
+            os.unlink(temp_path)
+            return url
+        except Exception as e:
+            print(f"Error uploading audio: {str(e)}")
+            return None
+
     def generate_video(
         self,
         prompt,
         reference_images=None,
-        video1_url="",
-        video2_url="",
-        video3_url="",
-        audio1_url="",
-        audio2_url="",
-        audio3_url="",
+        video_1=None,
+        video_2=None,
+        video_3=None,
+        audio_1=None,
+        audio_2=None,
+        audio_3=None,
         resolution="720p",
         duration="auto",
         aspect_ratio="auto",
@@ -4672,19 +4710,23 @@ class Seedance20ReferenceToVideoNode:
                 if image_urls:
                     arguments["image_urls"] = image_urls
 
-            # Handle video URLs
+            # Handle video inputs
             video_urls = []
-            for url in [video1_url, video2_url, video3_url]:
-                if url and url.strip():
-                    video_urls.append(url.strip())
+            for vid in [video_1, video_2, video_3]:
+                if vid is not None:
+                    vid_url = ImageUtils.upload_file(vid.get_stream_source())
+                    if vid_url:
+                        video_urls.append(vid_url)
             if video_urls:
                 arguments["video_urls"] = video_urls
 
-            # Handle audio URLs
+            # Handle audio inputs
             audio_urls = []
-            for url in [audio1_url, audio2_url, audio3_url]:
-                if url and url.strip():
-                    audio_urls.append(url.strip())
+            for aud in [audio_1, audio_2, audio_3]:
+                if aud is not None:
+                    aud_url = self._upload_audio(aud)
+                    if aud_url:
+                        audio_urls.append(aud_url)
             if audio_urls:
                 arguments["audio_urls"] = audio_urls
 
