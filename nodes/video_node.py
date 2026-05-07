@@ -4289,6 +4289,419 @@ class WanMoveNode:
             return ApiHandler.handle_video_generation_error("wan-move", str(e))
 
 
+class HappyHorseReferenceToVideoNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "reference_images": ("IMAGE",),
+            },
+            "optional": {
+                "aspect_ratio": (["16:9", "9:16", "1:1", "4:3", "3:4"], {"default": "16:9"}),
+                "resolution": (["720p", "1080p"], {"default": "1080p"}),
+                "duration": ("INT", {"default": 5, "min": 3, "max": 15, "step": 1}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+                "enable_safety_checker": ("BOOLEAN", {"default": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(self, prompt, reference_images, aspect_ratio="16:9", resolution="1080p", duration=5, seed=-1, enable_safety_checker=True):
+        try:
+            image_urls = ImageUtils.prepare_images(reference_images)
+            if not image_urls:
+                return ApiHandler.handle_video_generation_error(
+                    "happy-horse/reference-to-video", "Failed to upload reference images"
+                )
+
+            arguments = {
+                "prompt": prompt,
+                "image_urls": image_urls,
+                "aspect_ratio": aspect_ratio,
+                "resolution": resolution,
+                "duration": duration,
+                "enable_safety_checker": enable_safety_checker,
+            }
+
+            if seed != -1:
+                arguments["seed"] = seed
+
+            result = ApiHandler.submit_and_get_result(
+                "alibaba/happy-horse/reference-to-video", arguments
+            )
+            video_url = result["video"]["url"]
+            return (video_url,)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "happy-horse/reference-to-video", str(e)
+            )
+
+
+class HappyHorseVideoEditNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "video_url": ("STRING", {"default": ""}),
+            },
+            "optional": {
+                "reference_images": ("IMAGE",),
+                "resolution": (["720p", "1080p"], {"default": "1080p"}),
+                "audio_setting": (["auto", "origin"], {"default": "auto"}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+                "enable_safety_checker": ("BOOLEAN", {"default": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "edit_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def edit_video(self, prompt, video_url, reference_images=None, resolution="1080p", audio_setting="auto", seed=-1, enable_safety_checker=True):
+        try:
+            arguments = {
+                "prompt": prompt,
+                "video_url": video_url,
+                "resolution": resolution,
+                "audio_setting": audio_setting,
+                "enable_safety_checker": enable_safety_checker,
+            }
+
+            if reference_images is not None:
+                ref_urls = ImageUtils.prepare_images(reference_images)
+                if ref_urls:
+                    arguments["reference_image_urls"] = ref_urls
+
+            if seed != -1:
+                arguments["seed"] = seed
+
+            result = ApiHandler.submit_and_get_result(
+                "alibaba/happy-horse/video-edit", arguments
+            )
+            video_url = result["video"]["url"]
+            return (video_url,)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "happy-horse/video-edit", str(e)
+            )
+
+
+class KlingO34KReferenceToVideoNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+            },
+            "optional": {
+                "reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "start_image": ("IMAGE",),
+                "end_image": ("IMAGE",),
+                "element_1_frontal_image": ("IMAGE",),
+                "element_1_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_2_frontal_image": ("IMAGE",),
+                "element_2_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_3_frontal_image": ("IMAGE",),
+                "element_3_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_4_frontal_image": ("IMAGE",),
+                "element_4_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_5_frontal_image": ("IMAGE",),
+                "element_5_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_6_frontal_image": ("IMAGE",),
+                "element_6_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_7_frontal_image": ("IMAGE",),
+                "element_7_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "duration": (["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "5"}),
+                "aspect_ratio": (["16:9", "9:16", "1:1"], {"default": "16:9"}),
+                "generate_audio": ("BOOLEAN", {"default": False}),
+                "variations": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(
+        self,
+        prompt,
+        reference_images=None,
+        start_image=None,
+        end_image=None,
+        element_1_frontal_image=None,
+        element_1_reference_images=None,
+        element_2_frontal_image=None,
+        element_2_reference_images=None,
+        element_3_frontal_image=None,
+        element_3_reference_images=None,
+        element_4_frontal_image=None,
+        element_4_reference_images=None,
+        element_5_frontal_image=None,
+        element_5_reference_images=None,
+        element_6_frontal_image=None,
+        element_6_reference_images=None,
+        element_7_frontal_image=None,
+        element_7_reference_images=None,
+        duration="5",
+        aspect_ratio="16:9",
+        generate_audio=False,
+        variations=1,
+    ):
+        try:
+            arguments = {
+                "prompt": prompt,
+                "duration": duration,
+                "aspect_ratio": aspect_ratio,
+                "generate_audio": generate_audio,
+            }
+
+            # Handle style/appearance reference images
+            if reference_images is not None:
+                ref_image_urls = ImageUtils.prepare_images(reference_images)
+                if ref_image_urls:
+                    arguments["image_urls"] = ref_image_urls
+
+            # Handle start image (first frame)
+            if start_image is not None:
+                start_url = ImageUtils.upload_image(start_image)
+                if start_url:
+                    arguments["start_image_url"] = start_url
+
+            # Handle end image (last frame)
+            if end_image is not None:
+                end_url = ImageUtils.upload_image(end_image)
+                if end_url:
+                    arguments["end_image_url"] = end_url
+
+            # Build elements array
+            elements = []
+            element_pairs = [
+                (element_1_frontal_image, element_1_reference_images),
+                (element_2_frontal_image, element_2_reference_images),
+                (element_3_frontal_image, element_3_reference_images),
+                (element_4_frontal_image, element_4_reference_images),
+                (element_5_frontal_image, element_5_reference_images),
+                (element_6_frontal_image, element_6_reference_images),
+                (element_7_frontal_image, element_7_reference_images),
+            ]
+            for frontal_img, ref_imgs in element_pairs:
+                if frontal_img is not None:
+                    element = {}
+                    frontal_url = ImageUtils.upload_image(frontal_img)
+                    if frontal_url:
+                        element["frontal_image_url"] = frontal_url
+                    if ref_imgs is not None:
+                        ref_urls = ImageUtils.prepare_images(ref_imgs)
+                        if ref_urls:
+                            element["reference_image_urls"] = ref_urls
+                    elements.append(element)
+
+            if elements:
+                arguments["elements"] = elements
+
+            results = ApiHandler.submit_multiple_and_get_results(
+                "fal-ai/kling-video/o3/4k/reference-to-video", arguments, variations
+            )
+            return ([r["video"]["url"] for r in results],)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "kling-video/o3/4k/reference-to-video", str(e)
+            )
+
+
+class KlingV34KImageToVideoNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+                "image": ("IMAGE",),
+                "duration": (["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "5"}),
+            },
+            "optional": {
+                "end_image": ("IMAGE",),
+                "element_1_frontal_image": ("IMAGE",),
+                "element_1_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_2_frontal_image": ("IMAGE",),
+                "element_2_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "element_3_frontal_image": ("IMAGE",),
+                "element_3_reference_images": ("IMAGE", {"default": None, "multiple": True}),
+                "negative_prompt": ("STRING", {"default": "blur, distort, and low quality", "multiline": True}),
+                "cfg_scale": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
+                "generate_audio": ("BOOLEAN", {"default": True}),
+                "variations": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(
+        self,
+        prompt,
+        image,
+        duration,
+        end_image=None,
+        element_1_frontal_image=None,
+        element_1_reference_images=None,
+        element_2_frontal_image=None,
+        element_2_reference_images=None,
+        element_3_frontal_image=None,
+        element_3_reference_images=None,
+        negative_prompt="blur, distort, and low quality",
+        cfg_scale=0.5,
+        generate_audio=True,
+        variations=1,
+    ):
+        try:
+            image_url = ImageUtils.upload_image(image)
+            if not image_url:
+                return ApiHandler.handle_video_generation_error(
+                    "kling-video/v3/4k/image-to-video", "Failed to upload image"
+                )
+
+            arguments = {
+                "prompt": prompt,
+                "start_image_url": image_url,
+                "duration": duration,
+                "negative_prompt": negative_prompt,
+                "cfg_scale": cfg_scale,
+                "generate_audio": generate_audio,
+            }
+
+            if end_image is not None:
+                end_url = ImageUtils.upload_image(end_image)
+                if end_url:
+                    arguments["end_image_url"] = end_url
+
+            # Build elements array
+            elements = []
+            element_pairs = [
+                (element_1_frontal_image, element_1_reference_images),
+                (element_2_frontal_image, element_2_reference_images),
+                (element_3_frontal_image, element_3_reference_images),
+            ]
+            for frontal_img, ref_imgs in element_pairs:
+                if frontal_img is not None:
+                    element = {}
+                    frontal_url = ImageUtils.upload_image(frontal_img)
+                    if frontal_url:
+                        element["frontal_image_url"] = frontal_url
+                    if ref_imgs is not None:
+                        ref_urls = ImageUtils.prepare_images(ref_imgs)
+                        if ref_urls:
+                            element["reference_image_urls"] = ref_urls
+                    elements.append(element)
+
+            if elements:
+                arguments["elements"] = elements
+
+            results = ApiHandler.submit_multiple_and_get_results(
+                "fal-ai/kling-video/v3/4k/image-to-video", arguments, variations
+            )
+            return ([r["video"]["url"] for r in results],)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "kling-video/v3/4k/image-to-video", str(e)
+            )
+
+
+class Seedance20ReferenceToVideoNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"default": "", "multiline": True}),
+            },
+            "optional": {
+                "reference_images": ("IMAGE",),
+                "video1_url": ("STRING", {"default": ""}),
+                "video2_url": ("STRING", {"default": ""}),
+                "video3_url": ("STRING", {"default": ""}),
+                "audio1_url": ("STRING", {"default": ""}),
+                "audio2_url": ("STRING", {"default": ""}),
+                "audio3_url": ("STRING", {"default": ""}),
+                "resolution": (["480p", "720p", "1080p"], {"default": "720p"}),
+                "duration": (["auto", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "auto"}),
+                "aspect_ratio": (["auto", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"], {"default": "auto"}),
+                "generate_audio": ("BOOLEAN", {"default": True}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_video"
+    CATEGORY = "FAL/VideoGeneration"
+
+    def generate_video(
+        self,
+        prompt,
+        reference_images=None,
+        video1_url="",
+        video2_url="",
+        video3_url="",
+        audio1_url="",
+        audio2_url="",
+        audio3_url="",
+        resolution="720p",
+        duration="auto",
+        aspect_ratio="auto",
+        generate_audio=True,
+        seed=-1,
+    ):
+        try:
+            arguments = {
+                "prompt": prompt,
+                "resolution": resolution,
+                "duration": duration,
+                "aspect_ratio": aspect_ratio,
+                "generate_audio": generate_audio,
+            }
+
+            # Handle reference images
+            if reference_images is not None:
+                image_urls = ImageUtils.prepare_images(reference_images)
+                if image_urls:
+                    arguments["image_urls"] = image_urls
+
+            # Handle video URLs
+            video_urls = []
+            for url in [video1_url, video2_url, video3_url]:
+                if url and url.strip():
+                    video_urls.append(url.strip())
+            if video_urls:
+                arguments["video_urls"] = video_urls
+
+            # Handle audio URLs
+            audio_urls = []
+            for url in [audio1_url, audio2_url, audio3_url]:
+                if url and url.strip():
+                    audio_urls.append(url.strip())
+            if audio_urls:
+                arguments["audio_urls"] = audio_urls
+
+            if seed != -1:
+                arguments["seed"] = seed
+
+            result = ApiHandler.submit_and_get_result(
+                "bytedance/seedance-2.0/reference-to-video", arguments
+            )
+            video_url = result["video"]["url"]
+            return (video_url,)
+        except Exception as e:
+            return ApiHandler.handle_video_generation_error(
+                "seedance-2.0/reference-to-video", str(e)
+            )
+
+
 # Update Node class mappings
 NODE_CLASS_MAPPINGS = {
     "InfinityStarTextToVideo_fal": InfinityStarTextToVideoNode,
@@ -4346,6 +4759,11 @@ NODE_CLASS_MAPPINGS = {
     "LTX2_Extend_Video": LTX2ExtendNode,
     "SeedancePro15ImageToVideo_fal": SeedancePro15ImageToVideoNode,
     "WanMove_fal": WanMoveNode,
+    "HappyHorseReferenceToVideo_fal": HappyHorseReferenceToVideoNode,
+    "HappyHorseVideoEdit_fal": HappyHorseVideoEditNode,
+    "KlingO34KReferenceToVideo_fal": KlingO34KReferenceToVideoNode,
+    "KlingV34KImageToVideo_fal": KlingV34KImageToVideoNode,
+    "Seedance20ReferenceToVideo_fal": Seedance20ReferenceToVideoNode,
 }
 
 # Update Node display name mappings
@@ -4405,4 +4823,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LTX2_Extend_Video": "LTX2 Extend Video (fal)",
     "SeedancePro15ImageToVideo_fal": "Seedance Pro 1.5 Image To Video (fal)",
     "WanMove_fal": "Wan Move Image-to-Video (fal)",
+    "HappyHorseReferenceToVideo_fal": "Happy Horse Reference-to-Video (fal)",
+    "HappyHorseVideoEdit_fal": "Happy Horse Video Edit (fal)",
+    "KlingO34KReferenceToVideo_fal": "Kling O3 4K Reference-to-Video (fal)",
+    "KlingV34KImageToVideo_fal": "Kling V3 4K Image-to-Video (fal)",
+    "Seedance20ReferenceToVideo_fal": "Seedance 2.0 Reference-to-Video (fal)",
 }
