@@ -4422,9 +4422,9 @@ class KlingO34KReferenceToVideoNode:
                 "element_6_reference_images": ("IMAGE", {"default": None, "multiple": True}),
                 "element_7_frontal_image": ("IMAGE",),
                 "element_7_reference_images": ("IMAGE", {"default": None, "multiple": True}),
-                "element_video_1": ("VIDEO",),
-                "element_video_2": ("VIDEO",),
-                "element_video_3": ("VIDEO",),
+                "element_video_1_url": ("STRING", {"default": ""}),
+                "element_video_2_url": ("STRING", {"default": ""}),
+                "element_video_3_url": ("STRING", {"default": ""}),
                 "duration": (["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"], {"default": "5"}),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {"default": "16:9"}),
                 "generate_audio": ("BOOLEAN", {"default": False}),
@@ -4457,9 +4457,9 @@ class KlingO34KReferenceToVideoNode:
         element_6_reference_images=None,
         element_7_frontal_image=None,
         element_7_reference_images=None,
-        element_video_1=None,
-        element_video_2=None,
-        element_video_3=None,
+        element_video_1_url="",
+        element_video_2_url="",
+        element_video_3_url="",
         duration="5",
         aspect_ratio="16:9",
         generate_audio=False,
@@ -4517,11 +4517,9 @@ class KlingO34KReferenceToVideoNode:
                     elements.append(element)
 
             # Video-based elements
-            for vid in [element_video_1, element_video_2, element_video_3]:
-                if vid is not None:
-                    vid_url = ImageUtils.upload_file(vid.get_stream_source())
-                    if vid_url:
-                        elements.append({"video_url": vid_url})
+            for vid_url in [element_video_1_url, element_video_2_url, element_video_3_url]:
+                if vid_url and vid_url.strip():
+                    elements.append({"video_url": vid_url.strip()})
 
             if elements:
                 arguments["elements"] = elements
